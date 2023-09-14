@@ -6,14 +6,16 @@ pragma solidity 0.8.19;
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {PriceConverter} from "./PriceConvertor.sol";
 
+error NotOwner();
+
 contract FundMe {
-    uint256 public minUsd = 5e18;
+    uint256 public constant MIN_USD = 5e18;
 
     address[] public funders;
     mapping(address funder => uint256 amountFunded)
         public addressToAmountFunded;
 
-    address public owner;
+    address public immutable i_owner;
 
     constructor() {
         owner = msg.sender;
@@ -21,7 +23,7 @@ contract FundMe {
 
     function fund() public {
         require(
-            msg.value.getConversionRate() >= minUsd,
+            msg.value.getConversionRate() >= MIN_USD,
             "Didn't Send enough ETH."
         );
         funders.push(msg.sender);
@@ -40,7 +42,20 @@ contract FundMe {
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Must be the owner");
+        // require(msg.sender == i_owner, "Must be the owner");
+        if (msg.sender != i_owner) {
+            revert NotOwner();
+        }
         _;
+    }
+
+    // If someone sends money directly to contract
+    receive() external payable {
+        fund();
+    }
+
+    // if someone call function that doesnt exist
+    fallback() external payable {
+        fund();
     }
 }
